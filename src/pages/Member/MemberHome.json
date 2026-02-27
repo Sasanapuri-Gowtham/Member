@@ -1,0 +1,32 @@
+{
+  "user": {
+    "name": "Amma",
+    "avatar": "\ud83d\udc75",
+    "greeting": "Good Morning"
+  },
+  "upNext": {
+    "medicine": "Metformin 500mg",
+    "time": "08:00 PM"
+  },
+  "progress": {
+    "done": 2,
+    "total": 4
+  },
+  "stats": {
+    "adherence": "85%",
+    "riskScore": 72,
+    "conditions": 2
+  },
+  "quickActions": [
+    { "id": "medications", "icon": "Pill", "label": "My Medications", "color": "#ef4444" },
+    { "id": "lab-reports", "icon": "FileText", "label": "Lab Reports", "color": "#3b82f6" },
+    { "id": "photo-proof", "icon": "Camera", "label": "Photo Proof", "color": "#1a202c" },
+    { "id": "my-profile", "icon": "User", "label": "My Profile", "color": "#6d28d9" }
+  ],
+  "schedule": [
+    { "id": 1, "name": "Metformin", "dosage": "500mg", "status": "taken", "scheduledTime": "08:00 AM" },
+    { "id": 2, "name": "Amlodipine", "dosage": "5mg", "status": "taken", "scheduledTime": "08:00 AM" },
+    { "id": 3, "name": "Metformin", "dosage": "500mg", "status": "pending", "scheduledTime": "02:00 PM" },
+    { "id": 4, "name": "Atorvastatin", "dosage": "10mg", "status": "pending", "scheduledTime": "09:00 PM" }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "morning": [
+    {
+      "id": "metformin-am",
+      "medicine_name": "Metformin",
+      "dosage": "500mg",
+      "frequency": "Twice a day",
+      "timing": "After breakfast",
+      "duration": "Ongoing",
+      "purpose": "Controls blood sugar levels in Type 2 Diabetes",
+      "instructions": "Take with food to reduce stomach upset. Swallow whole with a glass of water.",
+      "side_effects": "Nausea, diarrhea, stomach pain, metallic taste",
+      "prescribed_by": "Dr. Ramesh Kumar",
+      "prescribed_date": "2025-12-10"
+    },
+    {
+      "id": "amlodipine-am",
+      "medicine_name": "Amlodipine",
+      "dosage": "5mg",
+      "frequency": "Once a day",
+      "timing": "After breakfast",
+      "duration": "Ongoing",
+      "purpose": "Lowers high blood pressure and prevents chest pain (angina)",
+      "instructions": "Take at the same time each day. Avoid grapefruit juice.",
+      "side_effects": "Swelling in ankles, dizziness, flushing, headache",
+      "prescribed_by": "Dr. Ramesh Kumar",
+      "prescribed_date": "2025-12-10"
+    }
+  ],
+  "evening": [
+    {
+      "id": "metformin-pm",
+      "medicine_name": "Metformin",
+      "dosage": "500mg",
+      "frequency": "Twice a day",
+      "timing": "After dinner",
+      "duration": "Ongoing",
+      "purpose": "Controls blood sugar levels in Type 2 Diabetes",
+      "instructions": "Take with food to reduce stomach upset. Swallow whole with a glass of water.",
+      "side_effects": "Nausea, diarrhea, stomach pain, metallic taste",
+      "prescribed_by": "Dr. Ramesh Kumar",
+      "prescribed_date": "2025-12-10"
+    },
+    {
+      "id": "atorvastatin-pm",
+      "medicine_name": "Atorvastatin",
+      "dosage": "10mg",
+      "frequency": "Once a day",
+      "timing": "After dinner",
+      "duration": "3 months",
+      "purpose": "Lowers cholesterol and reduces risk of heart disease",
+      "instructions": "Best taken at night. Avoid excessive alcohol consumption.",
+      "side_effects": "Muscle pain, headache, nausea, joint pain",
+      "prescribed_by": "Dr. Suresh Reddy",
+      "prescribed_date": "2026-01-15"
+    }
+  ]
+}

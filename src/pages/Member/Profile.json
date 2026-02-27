@@ -1,0 +1,40 @@
+{
+  "user": {
+    "name": "Amma",
+    "avatar": "\ud83d\udc75",
+    "role": "Mother",
+    "age": 68,
+    "healthScore": 72,
+    "healthScoreLabel": "Medium",
+    "adherence": "85%",
+    "medicinesCount": 4,
+    "conditionsCount": 2
+  },
+  "healthConditions": ["Diabetes Type 2", "Hypertension"],
+  "settings": [
+    {
+      "id": "emergency",
+      "icon": "Phone",
+      "title": "Emergency Contact",
+      "subtitle": "Add caregiver\u2019s phone number"
+    },
+    {
+      "id": "prescriptions",
+      "icon": "ClipboardList",
+      "title": "My Prescriptions",
+      "subtitle": "View uploaded prescriptions"
+    },
+    {
+      "id": "caregiver",
+      "icon": "UserCircle",
+      "title": "My Caregiver",
+      "subtitle": "Connected to Ravi (Admin)"
+    },
+    {
+      "id": "switch",
+      "icon": "Repeat",
+      "title": "Switch to Caregiver",
+      "subtitle": "View caregiver dashboard"
+    }
+  ]
+}
