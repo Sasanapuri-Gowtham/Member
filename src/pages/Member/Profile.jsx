@@ -1,6 +1,7 @@
-import React from "react";
-import { Phone, ClipboardList, UserCircle, Repeat, ChevronRight } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Phone, ClipboardList, UserCircle, Repeat, ChevronRight, Loader2, AlertTriangle } from "lucide-react";
 import profileData from "./Profile.json";
+import { getUserData, getMedicationLogs, calculateAdherence, getMedicines } from "../../services/firebase";
 import "./Member.css";
 
 const iconMap = {
@@ -59,7 +60,88 @@ function HealthScoreRing({ score, label }) {
 }
 
 function Profile() {
-  const { user, healthConditions, settings } = profileData;
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [adherence, setAdherence] = useState("0%");
+  const [medicinesCount, setMedicinesCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        setLoading(true);
+        const userId = localStorage.getItem("userId") || "2xQjFEnVFFVNjChSIYrGjr7iLRG3";
+        const data = await getUserData(userId);
+        if (data) {
+          setUserData(data);
+        } else {
+          setError("User not found");
+        }
+
+        // Fetch medication logs and calculate adherence
+        try {
+          const logs = await getMedicationLogs(userId);
+          const adherencePercent = calculateAdherence(logs);
+          setAdherence(adherencePercent);
+        } catch (logErr) {
+          console.error("Error fetching medication logs:", logErr);
+        }
+
+        // Fetch medicines count
+        try {
+          const medicines = await getMedicines(userId);
+          setMedicinesCount(medicines.length);
+        } catch (medErr) {
+          console.error("Error fetching medicines:", medErr);
+        }
+      } catch (err) {
+        console.error("Error fetching user:", err);
+        setError(err.message || "Failed to fetch user data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUser();
+  }, []);
+
+  const { healthConditions, settings } = profileData;
+
+  // Derived user display data
+  const displayUser = userData
+    ? {
+        name: userData.name || "User",
+        avatar: userData.gender === "Male" ? "👨" : userData.gender === "Female" ? "👩" : "👤",
+        role: userData.role === "caretaker" ? "Caretaker" : "Member",
+        age: userData.age || "N/A",
+        email: userData.email || "",
+        bloodGroup: userData.bloodGroup || "N/A",
+        familyCode: userData.familyCode || "",
+        healthScore: 75, // Default score, can be fetched from another collection
+        healthScoreLabel: "Health",
+        adherence: adherence,
+        medicinesCount: medicinesCount,
+        conditionsCount: healthConditions.length,
+      }
+    : profileData.user;
+
+  if (loading) {
+    return (
+      <div className="profile-page" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "400px" }}>
+        <Loader2 size={40} className="spin" style={{ color: "#2fa187" }} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="profile-page">
+        <div className="error-box" style={{ margin: "40px 20px" }}>
+          <AlertTriangle size={18} />
+          <span>Error: {error}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="profile-page">
@@ -67,17 +149,17 @@ function Profile() {
         <h2 className="profile-hero-title">My Profile</h2>
         <div className="profile-hero-content">
           <div className="profile-avatar-section">
-            <div className="profile-avatar">{user.avatar}</div>
+            <div className="profile-avatar">{displayUser.avatar}</div>
             <div className="profile-info">
-              <h3 className="profile-name">{user.name}</h3>
+              <h3 className="profile-name">{displayUser.name}</h3>
               <p className="profile-role">
-                {user.role} &middot; {user.age} yrs
+                {displayUser.role} &middot; {displayUser.age} yrs
               </p>
             </div>
           </div>
           <HealthScoreRing
-            score={user.healthScore}
-            label={user.healthScoreLabel}
+            score={displayUser.healthScore}
+            label={displayUser.healthScoreLabel}
           />
         </div>
       </div>
@@ -85,17 +167,17 @@ function Profile() {
       <div className="profile-body">
         <div className="stats-row">
           <div className="stat-item">
-            <span className="stat-value">{user.adherence}</span>
+            <span className="stat-value">{displayUser.adherence}</span>
             <span className="stat-label">Adherence</span>
           </div>
           <div className="stat-divider" />
           <div className="stat-item">
-            <span className="stat-value">{user.medicinesCount}</span>
+            <span className="stat-value">{displayUser.medicinesCount}</span>
             <span className="stat-label">Medicines</span>
           </div>
           <div className="stat-divider" />
           <div className="stat-item">
-            <span className="stat-value">{user.conditionsCount}</span>
+            <span className="stat-value">{displayUser.conditionsCount}</span>
             <span className="stat-label">Conditions</span>
           </div>
         </div>

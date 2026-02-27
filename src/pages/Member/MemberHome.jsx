@@ -11,8 +11,10 @@ import {
   X,
   AlertTriangle,
   Info,
+  Loader2,
 } from "lucide-react";
 import homeData from "./MemberHome.json";
+import { getUserData, getMedicationLogs, calculateAdherence } from "../../services/firebase";
 import "./Member.css";
 import { useParams } from "react-router-dom";
 const iconMap = {
@@ -21,6 +23,13 @@ const iconMap = {
   Camera,
   User,
 };
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good Morning";
+  if (hour < 18) return "Good Afternoon";
+  return "Good Evening";
+}
 
 function parseTo24h(timeStr) {
   const [time, period] = timeStr.split(" ");
@@ -91,17 +100,59 @@ function RiskScoreBadge({ score }) {
 }
 
 function MemberHome() {
-  const {userId} = useParams();
-  useEffect(() => {
-  if (userId) {
-    localStorage.setItem("userId", userId);
-    console.log(userId);
-    
-  }
-}, [userId]);
-  const { user, upNext, stats, quickActions } = homeData;
+  const { userId: paramUserId } = useParams();
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [schedule, setSchedule] = useState(homeData.schedule);
   const [toasts, setToasts] = useState([]);
+  const [adherence, setAdherence] = useState("0%");
+
+  /* ── Fetch user data from Firebase ── */
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Get userId from params or localStorage
+        let userId = paramUserId || localStorage.getItem("userId");
+        
+        if (!userId) {
+          // Default fallback for testing
+          userId = "2xQjFEnVFFVNjChSIYrGjr7iLRG3";
+        }
+        
+        if (paramUserId) {
+          localStorage.setItem("userId", paramUserId);
+        }
+
+        const data = await getUserData(userId);
+        if (data) {
+          setUserData(data);
+        } else {
+          setError("User not found");
+        }
+
+        // Fetch medication logs and calculate adherence
+        try {
+          const logs = await getMedicationLogs(userId);
+          const adherencePercent = calculateAdherence(logs);
+          setAdherence(adherencePercent);
+        } catch (logErr) {
+          console.error("Error fetching medication logs:", logErr);
+          // Keep default adherence value
+        }
+      } catch (err) {
+        console.error("Error fetching user:", err);
+        setError(err.message || "Failed to fetch user data");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+  }, [paramUserId]);
 
   useEffect(() => {
     function autoMissExpired() {
@@ -184,6 +235,39 @@ function MemberHome() {
   const nextPending = schedule.find(
     (m) => m.status === "pending" && !isTimeExceeded(m.scheduledTime, 30)
   );
+
+  /* ── Derived user display data ── */
+  const displayUser = userData
+    ? {
+        name: userData.name || "User",
+        avatar: userData.gender === "Male" ? "👨" : userData.gender === "Female" ? "👩" : "👤",
+        greeting: getGreeting(),
+        role: userData.role || "member",
+        age: userData.age || "N/A",
+      }
+    : homeData.user;
+
+  const { stats, quickActions } = homeData;
+
+  /* ── Loading & Error states ── */
+  if (loading) {
+    return (
+      <div className="member-page" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "400px" }}>
+        <Loader2 size={40} className="spin" style={{ color: "#2fa187" }} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="member-page">
+        <div className="error-box" style={{ margin: "40px 20px" }}>
+          <AlertTriangle size={18} />
+          <span>Error: {error}</span>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="member-page">
@@ -197,9 +281,9 @@ function MemberHome() {
         <div className="member-hero-top">
           <div>
             <p className="member-greeting">
-              {user.greeting} {user.avatar}
+              {displayUser.greeting} {displayUser.avatar}
             </p>
-            <h2 className="member-username">{user.name}</h2>
+            <h2 className="member-username">{displayUser.name}</h2>
           </div>
           <button className="member-bell">
             <Bell size={22} />
@@ -244,7 +328,7 @@ function MemberHome() {
 
         <div className="stats-row">
           <div className="stat-item">
-            <span className="stat-value">{stats.adherence}</span>
+            <span className="stat-value">{adherence}</span>
             <span className="stat-label">Adherence</span>
           </div>
           <div className="stat-divider" />
