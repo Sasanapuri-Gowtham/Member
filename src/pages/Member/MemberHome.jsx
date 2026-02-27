@@ -95,6 +95,8 @@ function MemberHome() {
   useEffect(() => {
   if (userId) {
     localStorage.setItem("userId", userId);
+    console.log(userId);
+    
   }
 }, [userId]);
   const { user, upNext, stats, quickActions } = homeData;
