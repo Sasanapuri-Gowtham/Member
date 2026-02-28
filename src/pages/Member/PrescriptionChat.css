@@ -272,15 +272,18 @@
 .chat-input-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px 20px;
+  gap: 8px;
+  padding: 10px 12px 20px;
   background: #fff;
   border-top: 1px solid #e8f0ed;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .chat-input {
   flex: 1;
-  padding: 12px 18px;
+  min-width: 0;
+  padding: 12px 16px;
   border: 1.5px solid #d1e5de;
   border-radius: 24px;
   font-size: 0.9rem;
@@ -289,6 +292,7 @@
   background: #f8fcfa;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
 }
 .chat-input:focus {
   border-color: #2fa187;
@@ -328,6 +332,86 @@
   cursor: not-allowed;
 }
 
+/* ── Mic Button ── */
+.chat-mic-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid #d1e5de;
+  background: #f8fcfa;
+  color: #2fa187;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+}
+.chat-mic-btn:hover:not(:disabled) {
+  background: #e8f5f0;
+  border-color: #2fa187;
+  transform: scale(1.06);
+}
+.chat-mic-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.chat-mic-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Active listening state – pulsing ring */
+.chat-mic-btn--active {
+  background: linear-gradient(135deg, hsl(168 60% 38%), hsl(168 50% 48%));
+  color: #fff;
+  border-color: transparent;
+  animation: micPulse 1.5s ease-in-out infinite;
+}
+.chat-mic-btn--active:hover:not(:disabled) {
+  background: linear-gradient(135deg, hsl(168 60% 34%), hsl(168 50% 44%));
+}
+
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(47, 161, 135, 0.45); }
+  50% { box-shadow: 0 0 0 10px rgba(47, 161, 135, 0); }
+}
+
+/* ── Speak button in bot messages ── */
+.chat-speak-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(47, 161, 135, 0.1);
+  color: #2fa187;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.chat-speak-btn:hover {
+  background: rgba(47, 161, 135, 0.22);
+  transform: scale(1.1);
+}
+.chat-speak-btn:active {
+  transform: scale(0.92);
+}
+
+/* ── Bot text wrapper: flex to align speak button ── */
+.chat-bot-text {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.chat-bot-text .chat-speak-btn {
+  align-self: flex-end;
+  margin-top: 6px;
+}
+
 /* Spin for loader */
 .spin {
   animation: chatSpin 0.8s linear infinite;
@@ -343,7 +427,73 @@
   .chat-page {
     max-width: 100%;
   }
+  .chat-header {
+    padding: 12px 12px;
+    gap: 8px;
+  }
+  .chat-back-btn {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+  }
+  .chat-header-title {
+    font-size: 1rem;
+    gap: 6px;
+  }
+  .chat-chips-bar {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  .chat-chip {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
   .chat-bubble {
     max-width: 85%;
+    font-size: 0.86rem;
+  }
+  .chat-input-bar {
+    gap: 6px;
+    padding: 8px 10px 16px;
+  }
+  .chat-input {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+  }
+  .chat-mic-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+  .chat-send-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+  .chat-disclaimer {
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .chat-input-bar {
+    gap: 5px;
+    padding: 6px 8px 14px;
+  }
+  .chat-mic-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+  .chat-send-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+  .chat-input {
+    padding: 9px 12px;
+    font-size: 0.82rem;
+  }
+  .chat-back-btn span {
+    display: none;
   }
 }

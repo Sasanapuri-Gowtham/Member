@@ -90,7 +90,7 @@ export default function MyMedications() {
       {/* ---- Header ---- */}
       <header className="header">
         <p className="header-title">My Medications</p>
-        <p style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "4px" }}>{totalMeds} active {totalMeds === 1 ? "medicine" : "medicines"}</p>
+        <p style={{ fontSize: "0.85rem", color: "#dbdbdb", marginTop: "4px" }}>{totalMeds} active {totalMeds === 1 ? "medicine" : "medicines"}</p>
       </header>
 
       <main className="content">

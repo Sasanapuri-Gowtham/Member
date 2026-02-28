@@ -29,12 +29,6 @@
       "icon": "UserCircle",
       "title": "My Caregiver",
       "subtitle": "Connected to Ravi (Admin)"
-    },
-    {
-      "id": "switch",
-      "icon": "Repeat",
-      "title": "Switch to Caregiver",
-      "subtitle": "View caregiver dashboard"
     }
   ]
 }

@@ -27,21 +27,41 @@ Return ONLY a valid JSON array — no explanation, no markdown fences, no extra 
 Required format:
 [
   {
-    "medicine_name": "Full medicine name with strength, e.g. Paracetamol 500mg",
-    "dosage": "e.g. 1 tablet",
-    "frequency": "e.g. 3 times a day",
-    "timing": "e.g. After morning meal / Before bed",
-    "duration": "e.g. 5 days"
+    "name": "Full medicine name with strength, e.g. Paracetamol 500mg",
+    "dosage": "e.g. 1 tablet or 5 ml",
+    "frequency": "once / twice / thrice (use these exact words)",
+    "timing": ["morning", "afternoon", "evening"],
+    "numberOfDays": 7,
+    "note": "Brief usage instruction, e.g. Take after meals with water",
+    "scheduledTimes": {
+      "morning": "08:00",
+      "afternoon": "13:00",
+      "evening": "18:00"
+    }
   }
 ]
 
-CRITICAL RULE: If ANY field is missing or unclear from the prescription, you MUST use your medical knowledge to suggest the most appropriate, medically safe default value based on the medicine name, its common usage, and standard prescribing practices. Do NOT ever return "Not specified" or leave any field empty. Every field must have a meaningful, helpful value.
+FIELD RULES:
+- "name": Full medicine name including strength/form (e.g. "Amoxicillin 500mg Capsule").
+- "dosage": Amount per dose (e.g. "1 tablet", "5 ml", "2 capsules").
+- "frequency": Use ONLY "once", "twice", or "thrice".
+- "timing": Array containing ONLY "morning", "afternoon", and/or "evening" based on frequency.
+  - once → pick the most appropriate single timing ["morning"] or ["evening"]
+  - twice → ["morning", "evening"]
+  - thrice → ["morning", "afternoon", "evening"]
+- "numberOfDays": Integer number of days. Convert weeks/months to days.
+- "note": Practical instructions (before/after meals, with water, avoid alcohol, etc.)
+- "scheduledTimes": Map ONLY the timings present in the timing array. Use 24-hour format.
+  - morning → "08:00", afternoon → "13:00", evening → "18:00" (defaults)
+  - Only include keys that are in the timing array.
+
+CRITICAL RULE: If ANY field is missing or unclear from the prescription, you MUST use your medical knowledge to suggest the most appropriate, medically safe default value. Do NOT ever return empty fields. Every field must have a meaningful value.
 
 Examples of smart defaults:
-- Paracetamol with no timing → "After meals"
-- Antibiotic with no frequency → "3 times a day (every 8 hours)"
-- Vitamin D with no duration → "30 days (typical course)"
-- Antacid with no timing → "Before meals"
+- Paracetamol with no timing → frequency "thrice", timing ["morning","afternoon","evening"]
+- Antibiotic with no frequency → frequency "thrice"
+- Vitamin D with no duration → numberOfDays 30
+- Antacid with no note → note "Take before meals"
   `.trim();
 
   const userModel = import.meta.env.VITE_GEMINI_MODEL;
@@ -72,10 +92,31 @@ Examples of smart defaults:
         typeof result?.text === "function"
           ? result.text()
           : (result?.text ?? "");
-      const jsonMatch = responseText.match(/\[[\s\S]*?\]/);
-      if (!jsonMatch) return [];
 
-      const medicines = JSON.parse(jsonMatch[0]);
+      // Strip markdown fences if present
+      let cleaned = responseText
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
+
+      // Extract the JSON array — use a bracket-counting approach
+      // to handle nested objects/arrays correctly
+      const startIdx = cleaned.indexOf("[");
+      if (startIdx === -1) return [];
+
+      let depth = 0;
+      let endIdx = -1;
+      for (let i = startIdx; i < cleaned.length; i++) {
+        if (cleaned[i] === "[") depth++;
+        else if (cleaned[i] === "]") {
+          depth--;
+          if (depth === 0) { endIdx = i; break; }
+        }
+      }
+      if (endIdx === -1) return [];
+
+      const jsonStr = cleaned.substring(startIdx, endIdx + 1);
+      const medicines = JSON.parse(jsonStr);
       return Array.isArray(medicines) ? medicines : [];
     } catch (err) {
       lastError = err;

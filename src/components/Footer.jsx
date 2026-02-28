@@ -1,12 +1,12 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { Home, Pill, ClipboardList, User } from "lucide-react";
+import { Home, Pill, ClipboardList, Users } from "lucide-react";
 
 const tabs = [
   { id: "home", path: "/", label: "Home", icon: Home },
   { id: "meds", path: "/meds", label: "My Meds", icon: Pill },
   { id: "prescriptions", path: "/prescriptions", label: "Prescreps", icon: ClipboardList },
-  { id: "profile", path: "/profile", label: "Profile", icon: User },
+  { id: "community", path: "/community", label: "Community", icon: Users },
 ];
 
 function Footer() {

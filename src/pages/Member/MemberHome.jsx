@@ -14,15 +14,32 @@ import {
   Loader2,
 } from "lucide-react";
 import homeData from "./MemberHome.json";
-import { getUserData, getMedicationLogs, calculateAdherence } from "../../services/firebase";
+import { getUserData, getMedicines, getMedicationLogs, calculateAdherence } from "../../services/firebase";
 import "./Member.css";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 const iconMap = {
   Pill,
   FileText,
   Camera,
   User,
 };
+
+/* Map timing labels to default scheduled times */
+const TIMING_TO_TIME = {
+  morning: "08:00 AM",
+  afternoon: "02:00 PM",
+  evening: "09:00 PM",
+};
+
+/** Convert 24h string like "13:00" to "01:00 PM" */
+function to12h(time24) {
+  if (!time24 || !time24.includes(":")) return null;
+  let [h, m] = time24.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
+}
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -101,10 +118,11 @@ function RiskScoreBadge({ score }) {
 
 function MemberHome() {
   const { userId: paramUserId } = useParams();
+  const navigate = useNavigate();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [schedule, setSchedule] = useState(homeData.schedule);
+  const [schedule, setSchedule] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [adherence, setAdherence] = useState("0%");
 
@@ -132,6 +150,39 @@ function MemberHome() {
           setUserData(data);
         } else {
           setError("User not found");
+        }
+
+        // Fetch real medicines and build today's schedule
+        try {
+          const medicines = await getMedicines(userId);
+
+          let idCounter = 1;
+          const scheduleItems = [];
+
+          medicines.forEach((med) => {
+            const timings = med.timing || [];
+            const schedTimes = med.scheduledTimes || {};
+            timings.forEach((t) => {
+              const time12 = to12h(schedTimes[t]) || TIMING_TO_TIME[t] || "08:00 AM";
+              scheduleItems.push({
+                id: idCounter++,
+                name: med.name,
+                dosage: med.dosage || "",
+                scheduledTime: time12,
+                status: "pending",
+                medicineId: med.medicineId || med.id,
+              });
+            });
+          });
+
+          // Sort by time of day
+          scheduleItems.sort(
+            (a, b) => parseTo24h(a.scheduledTime) - parseTo24h(b.scheduledTime)
+          );
+
+          setSchedule(scheduleItems);
+        } catch (medErr) {
+          console.error("Error fetching medicines:", medErr);
         }
 
         // Fetch medication logs and calculate adherence
@@ -285,8 +336,8 @@ function MemberHome() {
             </p>
             <h2 className="member-username">{displayUser.name}</h2>
           </div>
-          <button className="member-bell">
-            <Bell size={22} />
+          <button className="member-bell" onClick={() => navigate("/profile")}>
+            <User size={22} />
           </button>
         </div>
 
@@ -343,22 +394,6 @@ function MemberHome() {
           </div>
         </div>
 
-        <div className="quick-grid">
-          {quickActions.map((action) => {
-            const Icon = iconMap[action.icon];
-            return (
-              <div key={action.id} className="quick-card">
-                <div
-                  className="quick-icon-wrap"
-                  style={{ color: action.color }}
-                >
-                  {Icon && <Icon size={26} />}
-                </div>
-                <span className="quick-label">{action.label}</span>
-              </div>
-            );
-          })}
-        </div>
 
         <section className="schedule-section">
           <div className="schedule-header">

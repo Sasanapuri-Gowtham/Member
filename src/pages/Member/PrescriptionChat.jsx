@@ -10,6 +10,10 @@ import {
   Loader2,
   AlertTriangle,
   Sparkles,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import "./PrescriptionChat.css";
 
@@ -24,8 +28,15 @@ function PrescriptionChat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedChip, setSelectedChip] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceMessage, setIsVoiceMessage] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const synthRef = useRef(window.speechSynthesis);
+  const voiceTranscriptRef = useRef("");
+  const sendMessageRef = useRef(null);
 
   /* ── Initialize AI client once ── */
   const aiRef = useRef(null);
@@ -33,6 +44,105 @@ function PrescriptionChat() {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (apiKey) aiRef.current = new GoogleGenAI({ apiKey });
   }
+
+  /* ── Setup Speech Recognition ── */
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = true;
+      recognition.continuous = false;
+
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map((r) => r[0].transcript)
+          .join("");
+        setInput(transcript);
+        voiceTranscriptRef.current = transcript;
+
+        if (event.results[0].isFinal) {
+          setIsListening(false);
+          setIsVoiceMessage(true);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+        voiceTranscriptRef.current = "";
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        // Auto-send the voice message
+        const finalText = voiceTranscriptRef.current.trim();
+        if (finalText) {
+          voiceTranscriptRef.current = "";
+          setIsVoiceMessage(true);
+          // Small delay to let state settle before sending
+          setTimeout(() => {
+            setInput("");
+            sendMessageRef.current(finalText, true);
+          }, 150);
+        }
+      };
+
+      recognitionRef.current = recognition;
+    }
+
+    return () => {
+      recognitionRef.current?.abort();
+      synthRef.current?.cancel();
+    };
+  }, []);
+
+  /* ── Voice toggle handlers ── */
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert("Speech recognition is not supported in your browser.");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      setInput("");
+      setIsVoiceMessage(false);
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  const speakText = (text) => {
+    if (!synthRef.current) return;
+    synthRef.current.cancel();
+
+    // Strip markdown formatting for cleaner speech
+    const clean = text
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/[-•]\s*/g, ". ")
+      .replace(/\n+/g, ". ")
+      .replace(/[#*_`]/g, "")
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.lang = "en-US";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    synthRef.current.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    synthRef.current?.cancel();
+    setIsSpeaking(false);
+  };
 
   /* ── Build system context from medicines ── */
   const medicineContext = medicines
@@ -71,8 +181,11 @@ Your job:
   }, [messages, loading]);
 
   /* ── Send message to Gemini ── */
-  const sendMessage = async (text) => {
+  const sendMessage = async (text, fromVoice = false) => {
     if (!text.trim()) return;
+
+    // If fromVoice, mark as voice message for auto-speak
+    if (fromVoice) setIsVoiceMessage(true);
 
     const userMsg = { role: "user", text: text.trim() };
     setMessages((prev) => [...prev, userMsg]);
@@ -121,6 +234,12 @@ Your job:
           : result?.text ?? "Sorry, I couldn't generate a response.";
 
       setMessages((prev) => [...prev, { role: "bot", text: responseText }]);
+
+      // If user sent via voice, auto-speak the response
+      if (isVoiceMessage) {
+        speakText(responseText);
+        setIsVoiceMessage(false);
+      }
     } catch (err) {
       console.error("Chat error:", err);
       const msg = err?.message || "";
@@ -137,6 +256,9 @@ Your job:
     }
   };
 
+  // Keep sendMessageRef pointing to the latest sendMessage
+  sendMessageRef.current = sendMessage;
+
   /* ── Handle chip click ── */
   const handleChipClick = (med) => {
     setSelectedChip(med.medicine_name);
@@ -148,6 +270,8 @@ Your job:
   /* ── Handle form submit ── */
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Text submit → not a voice message
+    if (!isVoiceMessage) setIsVoiceMessage(false);
     sendMessage(input);
   };
 
@@ -232,7 +356,20 @@ Your job:
               } ${msg.isError ? "chat-bubble--error" : ""}`}
             >
               {msg.role === "bot" ? (
-                <div className="chat-bot-text">{formatBotText(msg.text)}</div>
+                <div className="chat-bot-text">
+                  {formatBotText(msg.text)}
+                  {!msg.isError && (
+                    <button
+                      className="chat-speak-btn"
+                      onClick={() =>
+                        isSpeaking ? stopSpeaking() : speakText(msg.text)
+                      }
+                      title={isSpeaking ? "Stop speaking" : "Listen"}
+                    >
+                      {isSpeaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <span>{msg.text}</span>
               )}
@@ -269,14 +406,26 @@ Your job:
 
       {/* ── Input Bar ── */}
       <form className="chat-input-bar" onSubmit={handleSubmit}>
+        <button
+          type="button"
+          className={`chat-mic-btn ${isListening ? "chat-mic-btn--active" : ""}`}
+          onClick={toggleListening}
+          disabled={loading}
+          title={isListening ? "Stop listening" : "Voice input"}
+        >
+          {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+        </button>
         <input
           ref={inputRef}
           type="text"
           className="chat-input"
-          placeholder="Ask about your medicines…"
+          placeholder={isListening ? "Listening…" : "Ask about your medicines…"}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          disabled={loading}
+          onChange={(e) => {
+            setInput(e.target.value);
+            setIsVoiceMessage(false);
+          }}
+          disabled={loading || isListening}
         />
         <button
           type="submit"
