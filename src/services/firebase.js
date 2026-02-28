@@ -121,6 +121,64 @@ export const calculateAdherence = (logs) => {
 };
 
 /**
+ * Log a medicine action (taken / skipped / missed) for today.
+ * Uses a deterministic doc ID so duplicate calls just overwrite.
+ * @param {string} memberId
+ * @param {Object} med - { medicineId, name, dosage, scheduledTime }
+ * @param {string} status - "taken" | "skipped" | "missed"
+ */
+export const logMedicineAction = async (memberId, med, status) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const docId = `${memberId}_${med.medicineId}_${med.scheduledTime?.replace(/[\s:]/g, "")}_${today}`;
+    const logRef = doc(db, "medication_logs", docId);
+    await setDoc(logRef, {
+      memberId,
+      medicineId: med.medicineId,
+      name: med.name,
+      dosage: med.dosage,
+      scheduledTime: med.scheduledTime,
+      status,
+      date: today,
+      timestamp: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error("Error logging medicine action:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get today's medication logs for a member.
+ * Returns a map of  "medicineId_scheduledTime" → status
+ * so the UI can restore taken/skipped states after refresh.
+ * @param {string} memberId
+ * @returns {Promise<Object>} e.g. { "abc123_0800AM": "taken", ... }
+ */
+export const getTodayMedicationLogs = async (memberId) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const logsRef = collection(db, "medication_logs");
+    const q = query(
+      logsRef,
+      where("memberId", "==", memberId),
+      where("date", "==", today)
+    );
+    const snapshot = await getDocs(q);
+    const statusMap = {};
+    snapshot.docs.forEach((d) => {
+      const data = d.data();
+      const key = `${data.medicineId}_${data.scheduledTime?.replace(/[\s:]/g, "")}`;
+      statusMap[key] = data.status;
+    });
+    return statusMap;
+  } catch (error) {
+    console.error("Error fetching today's logs:", error);
+    return {};
+  }
+};
+
+/**
  * Save a medicine to the medicines collection
  * @param {Object} med - Medicine object from AI analysis
  * @param {string} memberId - The member/user ID
@@ -296,6 +354,50 @@ export const toggleCommentLike = async (postId, commentId, userId) => {
     }
   } catch (error) {
     console.error("Error toggling comment like:", error);
+    throw error;
+  }
+};
+
+/* ══════════════════════════════════════════
+   Diet Plan
+   ══════════════════════════════════════════ */
+
+/**
+ * Fetch the saved diet plan for a user
+ * @param {string} userId - The user/member ID
+ * @returns {Promise<Object|null>} Diet plan data or null
+ */
+export const getDietPlan = async (userId) => {
+  try {
+    const dietRef = doc(db, "Diet Plan", userId);
+    const dietSnap = await getDoc(dietRef);
+    if (dietSnap.exists()) {
+      return dietSnap.data();
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching diet plan:", error);
+    throw error;
+  }
+};
+
+/**
+ * Save a diet plan for a user (overwrites previous plan)
+ * @param {string} userId - The user/member ID
+ * @param {Object} plan - The diet plan object from Gemini
+ * @returns {Promise<void>}
+ */
+export const saveDietPlan = async (userId, plan) => {
+  try {
+    const dietRef = doc(db, "Diet Plan", userId);
+    await setDoc(dietRef, {
+      ...plan,
+      userId,
+      generatedAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error("Error saving diet plan:", error);
     throw error;
   }
 };

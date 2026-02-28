@@ -14,7 +14,8 @@ import {
   Loader2,
 } from "lucide-react";
 import homeData from "./MemberHome.json";
-import { getUserData, getMedicines, getMedicationLogs, calculateAdherence } from "../../services/firebase";
+import { getUserData, getMedicines, getMedicationLogs, calculateAdherence, logMedicineAction, getTodayMedicationLogs } from "../../services/firebase";
+import VoiceReminder from "./VoiceReminder";
 import "./Member.css";
 import { useParams, useNavigate } from "react-router-dom";
 const iconMap = {
@@ -76,6 +77,15 @@ function isTimeExceeded(scheduledTime, graceMinutes = 30) {
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const schedMin = parseTo24h(scheduledTime);
   return nowMin > schedMin + graceMinutes;
+}
+
+/** Check if scheduled time is still upcoming (not yet past) */
+function isUpcoming(scheduledTime) {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const schedMin = parseTo24h(scheduledTime);
+  // Show as upcoming if scheduled time is in the future or within 2 min past
+  return nowMin <= schedMin + 2;
 }
 
 function Toast({ toast, onClose }) {
@@ -180,6 +190,19 @@ function MemberHome() {
             (a, b) => parseTo24h(a.scheduledTime) - parseTo24h(b.scheduledTime)
           );
 
+          // Restore today's taken/skipped statuses from Firebase
+          try {
+            const todayLogs = await getTodayMedicationLogs(userId);
+            scheduleItems.forEach((item) => {
+              const key = `${item.medicineId}_${item.scheduledTime?.replace(/[\s:]/g, "")}`;
+              if (todayLogs[key]) {
+                item.status = todayLogs[key];
+              }
+            });
+          } catch (logRestoreErr) {
+            console.error("Error restoring today's logs:", logRestoreErr);
+          }
+
           setSchedule(scheduleItems);
         } catch (medErr) {
           console.error("Error fetching medicines:", medErr);
@@ -206,12 +229,18 @@ function MemberHome() {
   }, [paramUserId]);
 
   useEffect(() => {
+    const userId = paramUserId || localStorage.getItem("userId") || "2xQjFEnVFFVNjChSIYrGjr7iLRG3";
+
     function autoMissExpired() {
       setSchedule((prev) => {
         let changed = false;
         const updated = prev.map((med) => {
-          if (med.status === "pending" && isTimeExceeded(med.scheduledTime, 30)) {
+          if (med.status === "pending" && isTimeExceeded(med.scheduledTime, 5)) {
             changed = true;
+            // Persist missed status to Firebase
+            logMedicineAction(userId, med, "missed").catch((err) =>
+              console.error("Failed to log missed action:", err)
+            );
             return { ...med, status: "missed" };
           }
           return med;
@@ -221,9 +250,9 @@ function MemberHome() {
     }
 
     autoMissExpired();
-    const interval = setInterval(autoMissExpired, 60000);
+    const interval = setInterval(autoMissExpired, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [schedule.length, paramUserId]);
 
   const doneCount = schedule.filter((m) => m.status === "taken").length;
   const missedCount = schedule.filter((m) => m.status === "missed").length;
@@ -255,6 +284,13 @@ function MemberHome() {
     setSchedule((prev) =>
       prev.map((m) => (m.id === med.id ? { ...m, status: "taken" } : m))
     );
+
+    // Persist to Firebase
+    const userId = paramUserId || localStorage.getItem("userId") || "2xQjFEnVFFVNjChSIYrGjr7iLRG3";
+    logMedicineAction(userId, med, "taken").catch((err) =>
+      console.error("Failed to log taken action:", err)
+    );
+
     addToast(
       "success",
       "Medicine Taken!",
@@ -267,6 +303,13 @@ function MemberHome() {
     setSchedule((prev) =>
       prev.map((m) => (m.id === med.id ? { ...m, status: "skipped" } : m))
     );
+
+    // Persist to Firebase
+    const userId = paramUserId || localStorage.getItem("userId") || "2xQjFEnVFFVNjChSIYrGjr7iLRG3";
+    logMedicineAction(userId, med, "skipped").catch((err) =>
+      console.error("Failed to log skipped action:", err)
+    );
+
     addToast(
       "info",
       "Medicine Skipped",
@@ -276,7 +319,7 @@ function MemberHome() {
 
   const handleUpNextTake = () => {
     const next = schedule.find(
-      (m) => m.status === "pending" && !isTimeExceeded(m.scheduledTime, 30)
+      (m) => m.status === "pending" && isUpcoming(m.scheduledTime)
     );
     if (next) {
       handleTakeMedicine(next);
@@ -284,7 +327,7 @@ function MemberHome() {
   };
 
   const nextPending = schedule.find(
-    (m) => m.status === "pending" && !isTimeExceeded(m.scheduledTime, 30)
+    (m) => m.status === "pending" && isUpcoming(m.scheduledTime)
   );
 
   /* ── Derived user display data ── */
@@ -322,6 +365,13 @@ function MemberHome() {
   
   return (
     <div className="member-page">
+      {/* Voice Reminder Overlay */}
+      <VoiceReminder
+        schedule={schedule}
+        onTakeMedicine={handleTakeMedicine}
+        onSkipMedicine={handleSkipMedicine}
+      />
+
       <div className="toast-container">
         {toasts.map((t) => (
           <Toast key={t.id} toast={t} onClose={() => removeToast(t.id)} />

@@ -178,3 +178,144 @@ const fileToBase64 = (file) =>
     reader.onload = () => resolve(reader.result.split(",")[1]);
     reader.onerror = (err) => reject(err);
   });
+
+
+/**
+ * Generate a balanced diet plan based on the user's medicines.
+ * @param {Array} medicines - Array of { name, dosage, frequency, timing, note }
+ * @returns {Promise<Object>} Parsed diet plan object
+ */
+export const generateDietPlan = async (medicines) => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "Missing Gemini API key. Create a .env file in the project root with:\nVITE_GEMINI_API_KEY=your_key_here"
+    );
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const medList = medicines
+    .map(
+      (m, i) =>
+        `${i + 1}. ${m.name} — Dosage: ${m.dosage}, Frequency: ${m.frequency}, Timing: ${(m.timing || []).join(", ")}, Note: ${m.note || "N/A"}`
+    )
+    .join("\n");
+
+  const prompt = `
+You are a certified clinical nutritionist. A patient is currently taking the following medicines:
+
+${medList}
+
+Based on these medicines, generate a personalized, balanced daily diet plan that:
+- Supports the effectiveness of the medicines
+- Avoids foods that may interact negatively with the medicines
+- Promotes overall health and recovery
+
+Return ONLY a valid JSON object — no explanation, no markdown fences, no extra text.
+
+Required format:
+{
+  "meals": {
+    "breakfast": {
+      "items": [
+        { "name": "Food name", "detail": "Portion size and brief reason" }
+      ]
+    },
+    "lunch": {
+      "items": [
+        { "name": "Food name", "detail": "Portion size and brief reason" }
+      ]
+    },
+    "snacks": {
+      "items": [
+        { "name": "Food name", "detail": "Portion size and brief reason" }
+      ]
+    },
+    "dinner": {
+      "items": [
+        { "name": "Food name", "detail": "Portion size and brief reason" }
+      ]
+    }
+  },
+  "tips": ["Tip 1", "Tip 2", "Tip 3"],
+  "avoid": ["Food/drink to avoid 1", "Food/drink to avoid 2"]
+}
+
+Rules:
+- Each meal should have 3-5 food items.
+- Tips should be 3-5 practical dietary tips considering the medicines.
+- Avoid list should include 3-6 foods/drinks that interact badly with the medicines.
+- Use simple, easy-to-find foods.
+- Keep detail text concise (under 20 words).
+`.trim();
+
+  const userModel = import.meta.env.VITE_GEMINI_MODEL;
+  const modelsToTry = userModel
+    ? [userModel, ...MODEL_CANDIDATES.filter((m) => m !== userModel)]
+    : MODEL_CANDIDATES;
+
+  let lastError = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      const result = await callWithRetry(() =>
+        ai.models.generateContent({
+          model: modelName,
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+        })
+      );
+
+      const responseText =
+        typeof result?.text === "function"
+          ? result.text()
+          : (result?.text ?? "");
+
+      // Strip markdown fences if present
+      let cleaned = responseText
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
+
+      // Extract the JSON object
+      const startIdx = cleaned.indexOf("{");
+      if (startIdx === -1) throw new Error("No JSON object found in response");
+
+      let depth = 0;
+      let endIdx = -1;
+      for (let i = startIdx; i < cleaned.length; i++) {
+        if (cleaned[i] === "{") depth++;
+        else if (cleaned[i] === "}") {
+          depth--;
+          if (depth === 0) { endIdx = i; break; }
+        }
+      }
+      if (endIdx === -1) throw new Error("Incomplete JSON object in response");
+
+      const jsonStr = cleaned.substring(startIdx, endIdx + 1);
+      const plan = JSON.parse(jsonStr);
+
+      // Validate structure
+      if (!plan.meals) throw new Error("Invalid diet plan structure");
+
+      return plan;
+    } catch (err) {
+      lastError = err;
+      const msg = err?.message || "";
+      if (msg.includes("404") || msg.includes("not found")) {
+        console.warn(`Model "${modelName}" not available, trying next…`);
+        continue;
+      }
+      break;
+    }
+  }
+
+  const message = lastError?.message || "Unknown Gemini error";
+  if (message.toLowerCase().includes("quota") || message.includes("429")) {
+    throw new Error(
+      "API quota exceeded. Your free-tier limit has been reached.\n" +
+        "→ Enable billing at https://ai.google.dev or generate a new API key with available quota."
+    );
+  }
+  throw new Error(message);
+};

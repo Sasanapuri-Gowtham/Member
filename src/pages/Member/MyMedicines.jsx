@@ -13,6 +13,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { getMedicines } from "../../services/firebase";
+import DietRecommendation from "./DietRecommendation";
 import "./Member.css";
 
 export default function MyMedications() {
@@ -131,6 +132,9 @@ export default function MyMedications() {
             )}
           </div>
         )}
+
+        {/* Diet Recommendation Section */}
+        <DietRecommendation />
       </main>
     </div>
   );

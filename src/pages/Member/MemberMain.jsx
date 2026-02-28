@@ -7,6 +7,7 @@ import Profile from "./Profile";
 import Community from "./Community";
 import CreatePost from "./CreatePost";
 import PostDetail from "./PostDetail";
+import GamePage from "./GamePage";
 import Footer from "../../components/Footer";
 import "./Member.css";
 import MyMedicines from "./MyMedicines";
@@ -16,7 +17,8 @@ function MemberMain() {
   const hideFooter =
     location.pathname === "/prescriptions/chat" ||
     location.pathname === "/community/create" ||
-    location.pathname.startsWith("/community/post/");
+    location.pathname.startsWith("/community/post/") ||
+    location.pathname === "/game";
 
   return (
     <div className="member-layout">
@@ -28,6 +30,7 @@ function MemberMain() {
           <Route path="/prescriptions" element={<PrescriptionPage />} />
           <Route path="/prescriptions/chat" element={<PrescriptionChat />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/game" element={<GamePage />} />
           <Route path="/community" element={<Community />} />
           <Route path="/community/create" element={<CreatePost />} />
           <Route path="/community/post/:postId" element={<PostDetail />} />

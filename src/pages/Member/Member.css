@@ -846,11 +846,12 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: 6px 16px;
+  padding: 6px 0;
   border-radius: 12px;
   color: #94a3b8;
   transition: color 0.2s ease;
   text-decoration: none;
+  flex: 1;
 }
 
 .bottom-nav-item:hover {
@@ -867,6 +868,48 @@
 }
 
 .bottom-nav-item--active .bottom-nav-label {
+  font-weight: 700;
+}
+
+/* Center floating game button */
+.bottom-nav-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-decoration: none;
+  color: #94a3b8;
+  margin-top: -28px;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+}
+
+.bottom-nav-center-btn {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, hsl(168 60% 38%), hsl(168 50% 48%));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(47, 161, 135, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bottom-nav-center:hover .bottom-nav-center-btn {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 22px rgba(47, 161, 135, 0.45);
+}
+
+.bottom-nav-center--active .bottom-nav-center-btn {
+  background: linear-gradient(135deg, hsl(168 65% 32%), hsl(168 55% 42%));
+  box-shadow: 0 6px 22px rgba(47, 161, 135, 0.5);
+}
+
+.bottom-nav-center--active .bottom-nav-label {
+  color: hsl(168 60% 38%);
   font-weight: 700;
 }
 
@@ -1300,4 +1343,76 @@
     grid-template-columns: 1fr 1fr;
     gap: 24px;
   }
+}
+
+/* ============================
+   Game Page (iframe)
+   ============================ */
+
+.game-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.game-back-notch {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.game-back-notch:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.game-back-notch svg {
+  color: #fff;
+}
+
+.game-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 10000;
+  background: #f5f5f5;
+}
+
+.game-loading p {
+  font-size: 0.95rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.game-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  flex: 1;
+  transition: opacity 0.3s ease;
 }
